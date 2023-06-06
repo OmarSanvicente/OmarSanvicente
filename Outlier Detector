@@ -1,0 +1,145 @@
+# -*- coding: utf-8 -*-
+"""
+Este programa sirve para poder detectar los casos de ventas atípicas
+el resultado de este programa un archivo excel o un csv que mostrará 
+los atípicos fuera de un intervalo de confianza, esto en función de las ventas 
+historicas de 14 periodos previos y el "current"
+Cabe destacar que este programa esta hecho con el fin de usarse en estadistica
+proyectiva, por lo que es importante mantener la representatividad de la muestra
+y por eso buscamos detectar casos atipicos u outliers
+
+"""
+
+import pandas as pd
+import numpy as np
+import winsound 
+
+
+#Leemos el archivo 
+ruta = //ruta
+original = pd.read_csv(ruta+"/ventas final.csv", decimal = ",")
+
+print(original.columns)
+#A veces los valores vienen como strings, en ese caso 
+#se debe cambiar la coma por un punto y eso se hace con la funcionstr.replace(",", ".")
+
+#original['ventas2021012'] = original['ventas2021012'].str.replace(',', '.')
+#original['ventas2022001'] = original['ventas2022001'].str.replace(',', '.')
+original['ventas2022002'] = original['ventas2022002'].str.replace(',', '.')
+original['ventas2022003'] = original['ventas2022003'].str.replace(',', '.')
+original['ventas2022004'] = original['ventas2022004'].str.replace(',', '.')
+original['ventas2022005'] = original['ventas2022005'].str.replace(',', '.')
+original['ventas2022006'] = original['ventas2022006'].str.replace(',', '.')
+original['ventas2022007'] = original['ventas2022007'].str.replace(',', '.')
+original['ventas2022008'] = original['ventas2022008'].str.replace(',', '.')
+original['ventas2022009'] = original['ventas2022009'].str.replace(',', '.')
+original['ventas2022010'] = original['ventas2022010'].str.replace(',', '.')
+original['ventas2022011'] = original['ventas2022011'].str.replace(',', '.')
+original['ventas2022012'] = original['ventas2022012'].str.replace(',', '.')
+original['ventas2023001'] = original['ventas2023001'].str.replace(',', '.')
+original['ventas2023002'] = original['ventas2023002'].str.replace(',', '.')
+original['ventas2023006'] = original['ventas2023006'].str.replace(',', '.')
+#original['Actual'] = original['Actual'].str.replace(',', '.')
+
+
+#Necesitamos convertir original['ultimo periodo'] a que todas sus entradas
+#sean flotantes, lo hacemos con la funcion astype(float)
+
+#original['ventas2021012'] = original['ventas2021012'].astype(float) 
+#original['ventas2022001'] = original['ventas2022001'].astype(float) 
+original['ventas2022002'] = original['ventas2022002'].astype(float) 
+original['ventas2022003'] = original['ventas2022003'].astype(float) 
+original['ventas2022004'] = original['ventas2022004'].astype(float) 
+original['ventas2022005'] = original['ventas2022005'].astype(float) 
+original['ventas2022006'] = original['ventas2022006'].astype(float) 
+original['ventas2022007'] = original['ventas2022007'].astype(float) 
+original['ventas2022008'] = original['ventas2022008'].astype(float) 
+original['ventas2022009'] = original['ventas2022009'].astype(float) 
+original['ventas2022010'] = original['ventas2022010'].astype(float) 
+original['ventas2022011'] = original['ventas2022011'].astype(float) 
+original['ventas2022012'] = original['ventas2022012'].astype(float) 
+original['ventas2023001'] = original['ventas2023001'].astype(float)
+original['ventas2023002'] = original['ventas2023002'].astype(float)
+original['ventas2023006'] = original['ventas2023006'].astype(float)
+original['Actual'] = original['Actual'].astype(float)
+
+
+
+""" Primer filtro: piso de ventas (deben tener mas de 6 periodos) """
+#definimos las ventas por periodo:
+vpp = original.loc[:,['ventas2022002','ventas2022003','ventas2022004', 'ventas2022005', 'ventas2022006', 'ventas2022007', 'ventas2022008', 'ventas2022009', 'ventas2022010', 'ventas2022011', 'ventas2022012','ventas2023001','ventas2023002','ventas2023006','Actual']]
+
+
+# Contar los valores NaN en todos los renglones
+num_nans = original.isna().sum(axis=1)
+original['Num_NaN'] = num_nans
+
+
+#Agregamos la variable booleana filtro piso de ventas (fpv)
+fpv = original['Num_NaN'] < 6
+original['Piso de Ventas'] = fpv
+
+
+#Creamos el DF del primer filtro
+filtro1 = original.loc[original['Piso de Ventas'] == True, ['CODIGO_TIENDA','ventas2022002','ventas2022003','ventas2022004', 'ventas2022005', 'ventas2022006', 'ventas2022007', 'ventas2022008', 'ventas2022009', 'ventas2022010', 'ventas2022011', 'ventas2022012','ventas2023001','ventas2023002','ventas2023006','Actual']]
+
+#Creamos el DF de las que no alcanzan el piso de ventas No Alcanzan Piso de Ventas
+napv = original.loc[original['Piso de Ventas'] == False, ['CODIGO_TIENDA','ventas2022002','ventas2022003','ventas2022004', 'ventas2022005', 'ventas2022006', 'ventas2022007', 'ventas2022008', 'ventas2022009', 'ventas2022010', 'ventas2022011', 'ventas2022012','ventas2023001','ventas2023002','ventas2023006','Actual']]
+#napv.to_excel('Resultados Atípicos sin piso ventas prueba febrero.xlsx', index = False)
+
+
+"""Segundo Filtro con un intervalo de confianza"""
+#A partir de aqui solo trabajaremos con el DF filtro1
+#Vamos a calcular el promedio de cada renglon
+
+#Primero seleccionemos unicamente los campos que tienen ventas
+vppf = filtro1.loc[:,['ventas2022002','ventas2022003','ventas2022004', 'ventas2022005', 'ventas2022006', 'ventas2022007', 'ventas2022008', 'ventas2022009', 'ventas2022010', 'ventas2022011', 'ventas2022012','ventas2023001','ventas2023002','ventas2023006','Actual']]
+
+#Calculemos el promedio del renglon, es decir promedio de ventas de la tienda 
+promedio_ventas = np.mean(vppf, axis = 1)
+#Agregamos la columna Promedio al dataframe
+filtro1 = filtro1.assign(Promedio = promedio_ventas.round(5))
+
+
+#Calculemos la desviacion estandar del renglon
+desv_est = round(np.std(vppf, axis = 1),5)
+
+#Agregamos la columna con la desviacion estandar al dataframe
+filtro1 = filtro1.assign(Desviación_Estandar = desv_est.round(5))
+
+
+#Vamos a calcular una cota superior y una cota inferior para construir un 
+#intervalo de confianza
+
+cota_superior = promedio_ventas + np.sqrt(2)*desv_est
+cota_inferior = promedio_ventas - np.sqrt(2)*desv_est
+
+#Creamos las columnas cota superior y cota inferior
+filtro1 = filtro1.assign(Cota_Superior = cota_superior.round(5))
+filtro1 = filtro1.assign(Cota_Inferior = cota_inferior.round(5))
+
+#Comparamos el ultimo periodo de ventas con las cotas superior e inferior
+comparacion_positiva = filtro1['Actual'] > filtro1['Cota_Superior']
+comparacion_negativa = filtro1['Actual'] < filtro1['Cota_Inferior']
+
+
+#Creamos nuevas columnas que sean comparacion positiva y negativa, 
+#para guardar los valores y usarlos despues
+
+filtro1['Comparacion Positiva'] = comparacion_positiva
+filtro1['Comparacion Negativa'] = comparacion_negativa
+
+
+#Cuando alguna de las columnas de comparacion sea positiva, lo guardaremos
+#en resultados_positivos para atipico alto y resultados_negativos para atipico bajo
+resultados_positivos = filtro1.loc[filtro1['Comparacion Positiva'] == True, ['CODIGO_TIENDA','ventas2022002','ventas2022003','ventas2022004', 'ventas2022005', 'ventas2022006', 'ventas2022007', 'ventas2022008', 'ventas2022009', 'ventas2022010', 'ventas2022011', 'ventas2022012','ventas2023001','ventas2023002','ventas2023006','Actual']]
+resultados_negativos = filtro1.loc[filtro1['Comparacion Negativa'] == True, ['CODIGO_TIENDA','ventas2022002','ventas2022003','ventas2022004', 'ventas2022005', 'ventas2022006', 'ventas2022007', 'ventas2022008', 'ventas2022009', 'ventas2022010', 'ventas2022011', 'ventas2022012','ventas2023001','ventas2023002','ventas2023006','Actual']]
+
+
+resultados = pd.concat([resultados_positivos, resultados_negativos], axis = 0)
+resultados_final = pd.concat([resultados, napv], axis= 0)
+#En las siguientes lineas puedes elegir si quieres un CSV o un XLSX
+resultados_final.to_excel(ruta+'Resultados Atípicos.xlsx', index = False)
+#resultados_gral.to_csv('Resultados Atípicos.csv', sep ='\t', index = False)
+
+winsound.MessageBeep()
